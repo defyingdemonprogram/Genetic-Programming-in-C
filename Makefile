@@ -1,7 +1,7 @@
 CC = gcc
 PREFIX = $(HOME)/opt/c/sdl
 CFLAGS = -Wall -Wextra -ggdb -pedantic -I$(PREFIX)/include
-LDFLAGS = -L$(PREFIX)/lib -lSDL3
+LDFLAGS = -L$(PREFIX)/lib -lSDL3 -lm
 TARGET = main
 TARGET_EXE = build/main
 

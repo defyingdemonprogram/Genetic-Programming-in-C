@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <math.h>
+#include <time.h>
 #include <SDL3/SDL.h>
 #include "./style.h"
 
@@ -15,7 +16,7 @@
 #define CELL_HEIGHT ((float) SCREEN_HEIGHT / BOARD_HEIGHT)
 
 #define AGENTS_COUNT 5
-#define AGENTS_PADDING 10
+#define AGENT_PADDING 15.0f
 
 typedef enum {
     DIR_RIGHT = 0,
@@ -23,6 +24,17 @@ typedef enum {
     DIR_LEFT,
     DIR_DOWN,
 } Dir;
+
+float agents_dirs[4][6] = {
+    // DIR_RIGHT
+    {0.0, 0.0, 1.0, 0.5, 0.0, 1.0},
+    // DIR_UP
+    {0.0, 1.0, 0.5, 0.0, 1.0, 1.0},
+    // DIR_LEFT
+    {1.0, 0.0, 1.0, 1.0, 0.0, 0.5},
+    // DIR_DOWN
+    {0.0, 0.0, 1.0, 0.0, 0.5, 1.0},
+};
 
 typedef struct {
     int pos_x, pos_y;
@@ -63,6 +75,71 @@ void sdl_set_color_hex(SDL_Renderer *renderer, Uint32 hex) {
             (hex >> (2 * 8)) & 0xFF,
             (hex >> (1 * 8)) & 0xFF,
             (hex >> (0 * 8)) & 0xFF));
+}
+
+void filledTriangleColor(SDL_Renderer *renderer, float x1, float y1, float x2, float y2, float x3, float y3, Uint32 color) {
+    sdl_set_color_hex(renderer, color);
+
+    // Find the bounding box of the triangle
+    float min_y = fminf(fminf(y1, y2), y3);
+    float max_y = fmaxf(fmaxf(y1, y2), y3);
+
+    // Clip to the screen bounds
+    min_y = fmaxf(min_y, 0);
+    max_y = fminf(max_y, SCREEN_HEIGHT);
+
+    for (float y = min_y; y <= max_y; y += 1.0f) {
+        float intersections[3];
+        int intersect_count = 0;
+
+        // Edge1: (x1, y1) to (x2, y2)
+        if ((y1 <= y && y2 > y) || (y2 <= y && y1 > y)) {
+            float t = (y - y1) / (y2 - y1);
+            if (t >= 0 && t <= 1) {
+                intersections[intersect_count++] = x1 + t * (x2 - x1);
+            }
+        }
+
+        // Edge2: (x2, y2) to (x3, y3)
+        if ((y2 <= y && y3 > y) || (y3 <= y && y2 > y)) {
+            float t = (y - y2) / (y3 - y2);
+            if (t >= 0 && t <= 1) {
+                intersections[intersect_count++] = x2 + t * (x3 - x2);
+            }
+        }
+
+        // Edge3: (x3, y3) to (x1, y1)
+        if ((y3 <= y && y1 > y) || (y1 <= y && y3 > y)) {
+            float t = (y - y3) / (y1 - y3);
+            if (t >= 0 && t <= 1) {
+                intersections[intersect_count++] = x3 + t * (x1 - x3);
+            }
+        }
+
+        // Sort intersections
+        if (intersect_count >= 2) {
+            for (int i=0; i < intersect_count - 1; i++) {
+                for (int j=0; j < intersect_count - i - 1; j++) {
+                    if (intersections[j] > intersections[j + 1]) {
+                        float temp = intersections[j];
+                        intersections[j] = intersections[j + 1];
+                        intersections[j + 1] = temp;
+                    }
+                }
+            }
+            // Draw line between the first two intersections
+            scc(SDL_RenderLine(renderer, intersections[0], y, intersections[1], y));
+        }
+    }
+
+    // Draw outline for better visibility
+    SDL_FPoint points[4] = {
+        {x1, y1},
+        {x2, y2},
+        {x3, y3},
+        {x1, y1}
+    };
+    scc(SDL_RenderLines(renderer, points, 4));
 }
 
 void render_board_grid(SDL_Renderer *renderer) {
@@ -111,16 +188,22 @@ void init_agents(void) {
     }
 }
 void render_agent(SDL_Renderer *renderer, Agent agent) {
-    sdl_set_color_hex(renderer, AGENT_COLOR);
+    // Calculate triangle vertices
+    float x1 = agents_dirs[agent.dir][0] * (CELL_WIDTH - AGENT_PADDING * 2) + agent.pos_x * CELL_WIDTH + AGENT_PADDING;
+    float y1 = agents_dirs[agent.dir][1] * (CELL_HEIGHT - AGENT_PADDING * 2) + agent.pos_y * CELL_HEIGHT + AGENT_PADDING;
+    float x2 = agents_dirs[agent.dir][2] * (CELL_WIDTH - AGENT_PADDING * 2) + agent.pos_x * CELL_WIDTH + AGENT_PADDING;
+    float y2 = agents_dirs[agent.dir][3] * (CELL_HEIGHT - AGENT_PADDING * 2) + agent.pos_y * CELL_HEIGHT + AGENT_PADDING;
+    float x3 = agents_dirs[agent.dir][4] * (CELL_WIDTH - AGENT_PADDING * 2) + agent.pos_x * CELL_WIDTH + AGENT_PADDING;
+    float y3 = agents_dirs[agent.dir][5] * (CELL_HEIGHT - AGENT_PADDING * 2) + agent.pos_y * CELL_HEIGHT + AGENT_PADDING;
 
-    SDL_FRect rect = {
-        (int) floorf(agent.pos_x * CELL_WIDTH + AGENTS_PADDING),
-        (int) floorf(agent.pos_y * CELL_HEIGHT + AGENTS_PADDING),
-        (int) floorf(CELL_WIDTH - 2 * AGENTS_PADDING),
-        (int) floorf(CELL_HEIGHT - 2 * AGENTS_PADDING),
-    };
-
-    scc(SDL_RenderFillRect(renderer, &rect));
+    // SDL_FPoint points[4] = {
+    //     {x1, y1},
+    //     {x2, y2},
+    //     {x3, y3},
+    //     {x1, y1} // Close the triangle
+    // };
+    // scc(SDL_RenderLines(renderer, points, 4));
+    filledTriangleColor(renderer, x1, y1, x2, y2, x3, y3, AGENT_COLOR);
 }
 
 void render_all_agents(SDL_Renderer *renderer) {
@@ -133,6 +216,7 @@ int main(int argc, char *argv[]) {
     (void) argc;
     (void) argv;
     
+    srand(time(NULL)); // Initialize random seed
     init_agents();
     scc(SDL_Init(SDL_INIT_VIDEO));
 
@@ -156,7 +240,6 @@ int main(int argc, char *argv[]) {
                 } break;
             }
         }
-        SDL_Delay(16); // Simple sleep (~60FPS)
 
         sdl_set_color_hex(renderer, BACKGROUND_COLOR);
         scc(SDL_RenderClear(renderer));
@@ -164,6 +247,7 @@ int main(int argc, char *argv[]) {
         render_board_grid(renderer);
         render_all_agents(renderer);
         SDL_RenderPresent(renderer);
+        SDL_Delay(16); // Simple sleep (~60FPS)
     }
     
     SDL_DestroyWindow(window);

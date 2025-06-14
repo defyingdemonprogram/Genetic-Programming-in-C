@@ -33,6 +33,20 @@ Genetic Programming (GP) is a type of evolutionary algorithm and a subset of mac
    make clean
    ```
 
+## Controls
+
+### Keyboard
+
+| Key              | Action                       |
+| ---------------- | ---------------------------- |
+| <kbd>R</kbd>     | Generate a new game state    |
+| <kbd>Space</kbd> | Advance the game by one step |
+
+### Mouse
+
+* Click on agents (red triangles) to print their state to stdout.
+
+
 ## References
 
 * [Genetic Algorithm – Wikipedia](https://en.wikipedia.org/wiki/Genetic_algorithm)

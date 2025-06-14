@@ -22,7 +22,7 @@ const char *env_as_cstr(Env env) {
     case ENV_AGENT:   return "ENV_AGENT";
     case ENV_FOOD:    return "ENV_FOOD";
     case ENV_WALL:    return "ENV_WALL";
-    default: {}
+    case ENV_COUNT:   {}
     }
     assert(0 && "Unreachable");
 }
@@ -31,11 +31,9 @@ const char *action_as_cstr(Action action) {
     switch (action) {
     case ACTION_NOP:        return "ACTION_NOP";
     case ACTION_STEP:       return "ACTION_STEP";
-    case ACTION_EAT:        return "ACTION_EAT";
-    case ACTION_ATTACK:     return "ACTION_ATTACK";
     case ACTION_TURN_LEFT:  return "ACTION_TURN_LEFT";
     case ACTION_TURN_RIGHT: return "ACTION_TURN_RIGHT";
-    default: {}
+    case ACTION_COUNT:      {}
     }
     assert(0 && "Unreachable");
 }
@@ -103,6 +101,7 @@ Env random_env(void) {
 Action random_action(void) {
     return random_int_range(0, ACTION_COUNT);
 }
+
 void init_game(Game *game) {
     for (size_t i = 0; i < AGENTS_COUNT; ++i) {
         game->agents[i].pos = random_empty_coord_on_board(game);
@@ -110,6 +109,7 @@ void init_game(Game *game) {
         game->agents[i].hunger = HUNGER_MAX;
         game->agents[i].health = HEALTH_MAX;
         game->agents[i].dir = i % 4;
+        game->agents[i].lifetime = 0;
 
         for (size_t j = 0; j < JEANS_COUNT; ++j) {
             game->chromos[i].jeans[j].state = random_int_range(0, STATES_COUNT);
@@ -204,28 +204,23 @@ void execute_action(Game *game, size_t agent_index, Action action) {
     case ACTION_NOP:
         break;
 
-    case ACTION_STEP:
-        if (env_of_agent(game, agent_index) != ENV_WALL) {
-            step_agent(&game->agents[agent_index]);
-        }
-        break;
-    
-    case ACTION_EAT: {
+    case ACTION_STEP: {
         Food *food = food_infront_of_agent(game, agent_index);
+        Agent *other_agent = agent_infront_of_agent(game, agent_index);
+        Wall *wall = wall_infront_of_agent(game, agent_index);
+
         if (food != NULL) {
             food->eaten = 1;
             game->agents[agent_index].hunger += FOOD_HUNGER_RECOVERY;
             if (game->agents[agent_index].hunger > HUNGER_MAX) {
                 game->agents[agent_index].hunger = HUNGER_MAX;
             }
-        }
-    } break;
-
-    case ACTION_ATTACK: {
-        // TODO: make agents drop the food when they die
-        Agent *other_agent = agent_infront_of_agent(game, agent_index);
-        if (other_agent != NULL) {
+            step_agent(&game->agents[agent_index]);
+        } else if (other_agent != NULL) {
+            // TODO: make agents drop the food when they die
             other_agent->health -= ATTACK_DAMAGE;
+        } else if (wall == NULL) {
+            step_agent(&game->agents[agent_index]);
         }
     } break;
 
@@ -244,22 +239,55 @@ void execute_action(Game *game, size_t agent_index, Action action) {
 }
 
 void step_game(Game *game) {
-    // Interpret genes
     for (size_t i = 0; i < AGENTS_COUNT; ++i) {
-        for (size_t j = 0; j < JEANS_COUNT; ++j) {
-            Gene gene = game->chromos[i].jeans[j];
-            if (gene.state == game->agents[i].state && gene.env == env_of_agent(game, i)) {
-                execute_action(game, i, gene.action);
-                game->agents[i].state = gene.next_state;
+        if (game->agents[i].health > 0) {
+            // Interpret genes
+            for (size_t j = 0; j < JEANS_COUNT; ++j) {
+                Gene gene = game->chromos[i].jeans[j];
+                if (gene.state == game->agents[i].state && gene.env == env_of_agent(game, i)) {
+                    execute_action(game, i, gene.action);
+                    game->agents[i].state = gene.next_state;
+                    break;
+                }
             }
-        }
-    }
 
-    // Handle hunger
-    for (size_t i = 0; i < AGENTS_COUNT; ++i) {
-        game->agents[i].hunger -= STEP_HUNGER_DAMAGE;
-        if (game->agents[i].hunger <= 0) {
-            game->agents[i].health = 0;
+            // Apply hunger
+            game->agents[i].hunger -= STEP_HUNGER_DAMAGE;
+            if (game->agents[i].hunger <= 0) {
+                game->agents[i].health = 0;
+            }
+
+            game->agents[i].lifetime += 1;
         }
     }
+}
+
+Agent *agent_at(Game *game, Coord pos) {
+    for (size_t i = 0; i < AGENTS_COUNT; ++i) {
+        if (coord_equals(game->agents[i].pos, pos)) {
+            return &game->agents[i];
+        }
+    }
+    return NULL;
+}
+
+void print_agent(FILE *stream, Agent *agent) {
+    printf("Agent {\n");
+    printf("  .pos = (%d, %d)\n", agent->pos.x, agent->pos.y);
+    printf("  .dir = %s\n", dir_as_cstr(agent->dir));
+    printf("  .hunger = %d\n", agent->hunger);
+    printf("  .health = %d\n", agent->health);
+    printf("  .state = %d\n", agent->state);
+    printf("}\n");
+}
+
+const char *dir_as_cstr(Dir dir) {
+    switch (dir) {
+    case DIR_RIGHT: return "DIR_RIGHT";
+    case DIR_UP:    return "DIR_UP";
+    case DIR_LEFT:  return "DIR_LEFT";
+    case DIR_DOWN:  return "DIR_DOWN";
+    case DIR_COUNT: {}
+    }
+    assert(0 && "Unreachable");
 }

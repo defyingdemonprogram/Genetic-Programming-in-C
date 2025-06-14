@@ -44,13 +44,24 @@ int main(int argc, char *argv[]) {
                         } break;
                     }
                 } break;
+
+                case SDL_EVENT_MOUSE_BUTTON_DOWN: {
+                    Coord pos;
+                    pos.x = (int) floorf(event.button.x / CELL_WIDTH);
+                    pos.y = (int) floorf(event.button.y / CELL_HEIGHT);
+                    Agent *agent = agent_at(&game, pos);
+
+                    if (agent) {
+                        print_agent(stdout, agent);
+                    }
+                } break;
             }
         }
 
         SDL_SetRenderDrawColor(renderer, HEX_COLOR(BACKGROUND_COLOR));
         scc(SDL_RenderClear(renderer));
 
-        render_board_grid(renderer);
+        // render_board_grid(renderer);
         render_game(renderer, &game);
         SDL_RenderPresent(renderer);
         SDL_Delay(16); // Simple sleep (~60FPS)

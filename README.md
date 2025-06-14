@@ -16,14 +16,14 @@ Genetic Programming (GP) is a type of evolutionary algorithm and a subset of mac
    Compile the project using:
 
    ```bash
-   make main
+   make gp
    ```
 
 3. **Run the Program**
    Execute the compiled binary with the proper library path:
 
    ```bash
-   LD_LIBRARY_PATH=~/opt/c/sdl/lib ./build/main
+   LD_LIBRARY_PATH=~/opt/c/sdl/lib ./build/gp
    ```
 
 4. **Clean Up**

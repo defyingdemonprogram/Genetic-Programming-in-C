@@ -1,63 +1,5 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <math.h>
-#include <time.h>
-#include <SDL3/SDL.h>
-#include "./style.h"
-#include "./helper.h"
+#include "./gp_game.h"
 
-#define BOARD_WIDTH 30
-#define BOARD_HEIGHT 30
-
-#define SCREEN_WIDTH 800
-#define SCREEN_HEIGHT 800
-
-#define CELL_WIDTH ((float) SCREEN_WIDTH / BOARD_WIDTH)
-#define CELL_HEIGHT ((float) SCREEN_HEIGHT / BOARD_HEIGHT)
-
-#define AGENTS_COUNT 60
-#define AGENT_PADDING (fminf(CELL_WIDTH, CELL_HEIGHT) / 5.0f)
-
-#define FOODS_COUNT 60
-#define FOOD_PADDING (AGENT_PADDING)
-
-#define WALLS_COUNT 60
-
-#define JEANS_COUNT 10
-
-#define FOOD_HUNGER_RECOVERY 10
-#define STEP_HUNGER_DAMAGE 5
-#define HUNGER_MAX 100
-#define HEALTH_MAX 100
-#define ATTACK_DAMAGE 10
-#define STATES_COUNT 5
-
-typedef struct {
-    int x, y;
-} Coord;
-
-int coord_equals(Coord a, Coord b) {
-    return a.x == b.x && a.y == b.y;
-}
-
-typedef enum {
-    DIR_RIGHT = 0,
-    DIR_UP,
-    DIR_LEFT,
-    DIR_DOWN,
-} Dir;
-
-float agents_dirs[4][6] = {
-    // DIR_RIGHT
-    {0.0, 0.0, 1.0, 0.5, 0.0, 1.0},
-    // DIR_UP
-    {0.0, 1.0, 0.5, 0.0, 1.0, 1.0},
-    // DIR_LEFT
-    {1.0, 0.0, 1.0, 1.0, 0.0, 0.5},
-    // DIR_DOWN
-    {0.0, 0.0, 1.0, 0.0, 0.5, 1.0},
-};
 
 Coord coord_dirs[4] = {
     // DIR_RIGHT
@@ -70,15 +12,9 @@ Coord coord_dirs[4] = {
     {0, 1}
 };
 
-typedef int State;
-
-typedef enum {
-    ENV_NOTHING = 0,
-    ENV_AGENT,
-    ENV_FOOD,
-    ENV_WALL,
-    ENV_COUNT,
-} Env;
+int coord_equals(Coord a, Coord b) {
+    return a.x == b.x && a.y == b.y;
+}
 
 const char *env_as_cstr(Env env) {
     switch (env) {
@@ -90,16 +26,6 @@ const char *env_as_cstr(Env env) {
     }
     assert(0 && "Unreachable");
 }
-
-typedef enum {
-    ACTION_NOP = 0,
-    ACTION_STEP,
-    ACTION_EAT,
-    ACTION_ATTACK,
-    ACTION_TURN_LEFT,
-    ACTION_TURN_RIGHT,
-    ACTION_COUNT,
-} Action;
 
 const char *action_as_cstr(Action action) {
     switch (action) {
@@ -114,18 +40,6 @@ const char *action_as_cstr(Action action) {
     assert(0 && "Unreachable");
 }
 
-typedef struct {
-    State state;
-    Env env;
-    Action action;
-    State next_state;
-} Gene;
-
-typedef struct {
-    size_t count;
-    Gene jeans[JEANS_COUNT];
-} Chromo;
-
 void print_chromo(FILE *stream, const Chromo *chromo) {
     for (size_t i = 0; i < JEANS_COUNT; ++i) {
         fprintf(stream, "%d %s %s %d\n",
@@ -133,55 +47,6 @@ void print_chromo(FILE *stream, const Chromo *chromo) {
                 env_as_cstr(chromo->jeans[i].env),
                 action_as_cstr(chromo->jeans[i].action),
                 chromo->jeans[i].next_state);
-    }
-}
-
-typedef struct {
-    Coord pos;
-    Dir dir;
-    int hunger;
-    int health;
-    State state;
-} Agent;
-
-typedef struct {
-    int eaten;
-    Coord pos;
-} Food;
-
-typedef struct {
-    Coord pos;
-} Wall;
-
-typedef struct {
-    Agent agents[AGENTS_COUNT];
-    Chromo chromos[AGENTS_COUNT];
-    Food foods[FOODS_COUNT];
-    Wall walls[WALLS_COUNT];
-} Game;
-
-static_assert(AGENTS_COUNT + FOODS_COUNT + WALLS_COUNT <= BOARD_WIDTH * BOARD_HEIGHT,
-              "Too many entities. Can't fit all of them on the board");
-
-void render_board_grid(SDL_Renderer *renderer) {
-    SDL_SetRenderDrawColor(renderer, HEX_COLOR(GRID_COLOR));
-
-    for (int x = 1; x < BOARD_WIDTH; ++x) {
-        scc(SDL_RenderLine(
-                renderer,
-                x * CELL_WIDTH,
-                0,
-                x * CELL_WIDTH,
-                SCREEN_HEIGHT));
-    }
-
-    for (int y = 1; y < BOARD_HEIGHT; ++y) {
-        scc(SDL_RenderLine(
-                renderer,
-                0,
-                y * CELL_HEIGHT,
-                SCREEN_WIDTH,
-                y * CELL_HEIGHT));
     }
 }
 
@@ -230,46 +95,6 @@ Coord random_empty_coord_on_board(const Game *game) {
     return result;
 }
 
-void render_agent(SDL_Renderer *renderer, Agent agent) {
-    // Calculate triangle vertices
-    float x1 = agents_dirs[agent.dir][0] * (CELL_WIDTH - AGENT_PADDING * 2) + agent.pos.x * CELL_WIDTH + AGENT_PADDING;
-    float y1 = agents_dirs[agent.dir][1] * (CELL_HEIGHT - AGENT_PADDING * 2) + agent.pos.y * CELL_HEIGHT + AGENT_PADDING;
-    float x2 = agents_dirs[agent.dir][2] * (CELL_WIDTH - AGENT_PADDING * 2) + agent.pos.x * CELL_WIDTH + AGENT_PADDING;
-    float y2 = agents_dirs[agent.dir][3] * (CELL_HEIGHT - AGENT_PADDING * 2) + agent.pos.y * CELL_HEIGHT + AGENT_PADDING;
-    float x3 = agents_dirs[agent.dir][4] * (CELL_WIDTH - AGENT_PADDING * 2) + agent.pos.x * CELL_WIDTH + AGENT_PADDING;
-    float y3 = agents_dirs[agent.dir][5] * (CELL_HEIGHT - AGENT_PADDING * 2) + agent.pos.y * CELL_HEIGHT + AGENT_PADDING;
-
-    filledTriangleColor(renderer, x1, y1, x2, y2, x3, y3, AGENT_COLOR);
-}
-
-void render_game(SDL_Renderer *renderer, const Game *game) {
-    for (size_t i = 0; i < AGENTS_COUNT; ++i) {
-        render_agent(renderer, game->agents[i]);
-    }
-
-    // TODO: foods are not rendered
-    for (size_t i = 0; i < FOODS_COUNT; ++i) {
-        filledCircleRGBA(
-            renderer,
-            (int) floorf(game->foods[i].pos.x * CELL_WIDTH + CELL_WIDTH * 0.5f),
-            (int) floorf(game->foods[i].pos.y * CELL_HEIGHT + CELL_HEIGHT * 0.5f),
-            (int) floorf(fminf(CELL_WIDTH, CELL_HEIGHT) * 0.5f - FOOD_PADDING),
-            FOOD_COLOR);
-    }
-
-    for (size_t i = 0; i < WALLS_COUNT; ++i) {
-        SDL_FRect rect = {
-            (int) floorf(game->walls[i].pos.x * CELL_WIDTH),
-            (int) floorf(game->walls[i].pos.y * CELL_HEIGHT),
-            (int) floorf(CELL_WIDTH),
-            (int) floorf(CELL_HEIGHT),
-        };
-
-        SDL_SetRenderDrawColor(renderer, HEX_COLOR(WALL_COLOR));
-
-        SDL_RenderFillRect(renderer, &rect);
-    }
-}
 
 Env random_env(void) {
     return random_int_range(0, ENV_COUNT);
@@ -321,18 +146,6 @@ void step_agent(Agent *agent) {
     agent->pos.y = mod_int(agent->pos.y + d.y, BOARD_HEIGHT);
 }
 
-Food *food_infront_of_agent(Game *game, size_t agent_index) {
-    Coord infront = coord_infront_of_agent(&game->agents[agent_index]);
-
-    for (size_t i = 0; i < FOODS_COUNT; ++i) {
-        if (!game->foods[i].eaten && coord_equals(infront, game->foods[i].pos)) {
-            return &game->foods[i];
-        }
-    }
-
-    return NULL;
-}
-
 Agent *agent_infront_of_agent(Game *game, size_t agent_index) {
     Coord infront = coord_infront_of_agent(&game->agents[agent_index]);
 
@@ -355,6 +168,18 @@ Wall *wall_infront_of_agent(Game *game, size_t agent_index) {
             return &game->walls[i];
         }
     }
+    return NULL;
+}
+
+Food *food_infront_of_agent(Game *game, size_t agent_index) {
+    Coord infront = coord_infront_of_agent(&game->agents[agent_index]);
+
+    for (size_t i = 0; i < FOODS_COUNT; ++i) {
+        if (!game->foods[i].eaten && coord_equals(infront, game->foods[i].pos)) {
+            return &game->foods[i];
+        }
+    }
+
     return NULL;
 }
 
@@ -437,64 +262,4 @@ void step_game(Game *game) {
             game->agents[i].health = 0;
         }
     }
-}
-
-Game game = {0};
-
-int main(int argc, char *argv[]) {
-    (void) argc;
-    (void) argv;
-    
-    srand(time(NULL)); // Initialize random seed
-    init_game(&game);
-
-    static_assert(AGENTS_COUNT > 0, "Not enough agents");
-    print_chromo(stdout, &game.chromos[0]);
-
-    scc(SDL_Init(SDL_INIT_VIDEO));
-
-    SDL_Window *const window = scp(SDL_CreateWindow("Hello World",
-        SCREEN_WIDTH, SCREEN_HEIGHT,
-        SDL_WINDOW_RESIZABLE
-    ));
-
-    SDL_Renderer *const renderer = scp(SDL_CreateRenderer(
-        window, NULL
-    ));
-
-    // Main loop: wait for quit event
-    SDL_Event event;
-    bool running = true;
-    while (running) {
-        while(SDL_PollEvent(&event)) {
-            switch (event.type) {
-                case SDL_EVENT_QUIT: {
-                    running = false;
-                } break;
-                case SDL_EVENT_KEY_DOWN: {
-                    switch(event.key.key) {
-                        case SDLK_SPACE: {
-                            step_game(&game);
-                        } break;
-
-                        case SDLK_R: {
-                            init_game(&game);
-                        } break;
-                    }
-                } break;
-            }
-        }
-
-        SDL_SetRenderDrawColor(renderer, HEX_COLOR(BACKGROUND_COLOR));
-        scc(SDL_RenderClear(renderer));
-
-        render_board_grid(renderer);
-        render_game(renderer, &game);
-        SDL_RenderPresent(renderer);
-        SDL_Delay(16); // Simple sleep (~60FPS)
-    }
-    
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-    return 0;
 }

@@ -9,6 +9,9 @@ COMMON_SRC = src/gp_game.h src/gp_game.c src/gp_visual.h src/gp_visual.c
 gp_trainer: $(TARGET) $(COMMON_SRC) | build
 	$(CC) $(CFLAGS) -o $(TARGET_DIR)/gp_trainer src/gp_trainer.c $(LDFLAGS)
 
+gp_inspector: $(TARGET) $(COMMON_SRC) | build
+	$(CC) $(CFLAGS) -o $(TARGET_DIR)/gp_inspector src/gp_inspector.c $(LDFLAGS)
+
 
 gp_simulator: src/gp_simulator.c $(COMMON_SRC) | build
 	$(CC) $(CFLAGS) -o $(TARGET_DIR)/gp_simulator src/gp_simulator.c $(LDFLAGS)

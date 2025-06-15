@@ -70,10 +70,8 @@ int is_cell_empty(const Game *game, Coord pos) {
         }
     }
 
-    for (size_t i = 0; i < FOODS_COUNT; ++i) {
-        if (coord_equals(game->foods[i].pos, pos)) {
-            return 0;
-        }
+    if (game->foods[pos.y][pos.x]) {
+        return 0;
     }
 
     for (size_t i = 0; i < WALLS_COUNT; ++i) {
@@ -122,7 +120,9 @@ void init_game(Game *game) {
     }
 
     for (size_t i = 0; i < FOODS_COUNT; ++i) {
-        game->foods[i].pos = random_empty_coord_on_board(game);
+        Coord pos = random_empty_coord_on_board(game);
+        game->foods[pos.y][pos.x] = 1;
+        game->foods_origin[i] = pos;
     }
 
     for (size_t i = 0; i < WALLS_COUNT; ++i) {
@@ -209,13 +209,11 @@ Wall *wall_infront_of_agent(Game *game, size_t agent_index) {
     return NULL;
 }
 
-Food *food_infront_of_agent(Game *game, size_t agent_index) {
+int *food_infront_of_agent(Game *game, size_t agent_index) {
     Coord infront = coord_infront_of_agent(&game->agents[agent_index]);
 
-    for (size_t i = 0; i < FOODS_COUNT; ++i) {
-        if (!game->foods[i].eaten && coord_equals(infront, game->foods[i].pos)) {
-            return &game->foods[i];
-        }
+    if (game->foods[infront.y][infront.x]) {
+        return &game->foods[infront.y][infront.x];
     }
 
     return NULL;
@@ -243,12 +241,12 @@ void execute_action(Game *game, size_t agent_index, Action action) {
         break;
 
     case ACTION_STEP: {
-        Food *food = food_infront_of_agent(game, agent_index);
+        int *food = food_infront_of_agent(game, agent_index);
         Agent *other_agent = agent_infront_of_agent(game, agent_index);
         Wall *wall = wall_infront_of_agent(game, agent_index);
 
         if (food != NULL) {
-            food->eaten = 1;
+            *food = 0;
             game->agents[agent_index].hunger += FOOD_HUNGER_RECOVERY;
             if (game->agents[agent_index].hunger > HUNGER_MAX) {
                 game->agents[agent_index].hunger = HUNGER_MAX;
@@ -370,8 +368,10 @@ void make_next_generation(Game *prev_game, Game *next_game) {
     qsort(prev_game->agents, AGENTS_COUNT, sizeof(Agent),
           compare_agents_lifetimes);
 
+    memcpy(next_game->foods_origin, prev_game->foods_origin, sizeof(prev_game->foods_origin));
     for (size_t i = 0; i < FOODS_COUNT; ++i) {
-        next_game->foods[i].pos = prev_game->foods[i].pos;
+        Coord pos = next_game->foods_origin[i];
+        next_game->foods[pos.y][pos.x] = 1;
     }
 
     for (size_t i = 0; i < WALLS_COUNT; ++i) {

@@ -52,18 +52,21 @@ void render_agent(SDL_Renderer *renderer, Agent agent) {
 
 void render_game(SDL_Renderer *renderer, const Game *game) {
     for (size_t i = 0; i < AGENTS_COUNT; ++i) {
-        render_agent(renderer, game->agents[i]);
+        if (game->agents[i].health > 0) {
+            render_agent(renderer, game->agents[i]);
+        }
     }
 
-    // TODO: foods are not rendered
-    for (size_t i = 0; i < FOODS_COUNT; ++i) {
-        if (!game->foods[i].eaten) {
-            filledCircleRGBA(
-                renderer,
-                (int) floorf(game->foods[i].pos.x * CELL_WIDTH + CELL_WIDTH * 0.5f),
-                (int) floorf(game->foods[i].pos.y * CELL_HEIGHT + CELL_HEIGHT * 0.5f),
-                (int) floorf(fminf(CELL_WIDTH, CELL_HEIGHT) * 0.5f - FOOD_PADDING),
-                FOOD_COLOR);
+    for (size_t y = 0; y < BOARD_HEIGHT; ++y) {
+        for (size_t x = 0; x < BOARD_WIDTH; ++x) {
+            if (game->foods[y][x]) {
+                filledCircleRGBA(
+                    renderer,
+                    (int) floorf(x * CELL_WIDTH + CELL_WIDTH * 0.5f),
+                    (int) floorf(y * CELL_HEIGHT + CELL_HEIGHT * 0.5f),
+                    (int) floorf(fminf(CELL_WIDTH, CELL_HEIGHT) * 0.5f - FOOD_PADDING),
+                    FOOD_COLOR);
+        }
         }
     }
 

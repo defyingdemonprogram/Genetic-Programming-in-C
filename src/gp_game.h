@@ -15,7 +15,7 @@
 #define ATTACK_DAMAGE 10
 #define STATES_COUNT 7
 #define MUTATION_CHANCE 100
-#define SELECTION_POOL 10
+#define SELECTION_POOL 50
 
 static_assert(AGENTS_COUNT + FOODS_COUNT + WALLS_COUNT <= BOARD_WIDTH * BOARD_HEIGHT,
               "Too many entities. Can't fit all of them on the board");
@@ -124,11 +124,14 @@ Env env_infront_of_agent(Game *game, size_t agent_index);
 
 void init_game(Game *game);
 
+void dump_game(const char *filepath, const Game *game);
+void load_game(const char *filepath, Game *game);
+
+int is_everyone_dead(const Game *game);
+
 void step_agent(Agent *agent);
 void execute_action(Game *game, size_t agent_index, Action action);
 void step_game(Game *game);
-
-void print_best_agents(FILE *stream, Game *game, size_t n);
 
 void mate_agents(const Agent *parent1, const Agent *parent2, Agent *child);
 void mutate_agent(Agent *agent);

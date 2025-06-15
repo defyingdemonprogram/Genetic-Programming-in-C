@@ -1,17 +1,15 @@
 #include "./gp_game.h"
 #include "./gp_visual.h"
 
-Game game = {0};
+Game games[2] = {0};
 
 int main(int argc, char *argv[]) {
     (void) argc;
     (void) argv;
     
     srand(time(NULL)); // Initialize random seed
-    init_game(&game);
 
     static_assert(AGENTS_COUNT > 0, "Not enough agents");
-    print_chromo(stdout, &game.chromos[0]);
 
     scc(SDL_Init(SDL_INIT_VIDEO));
 
@@ -26,6 +24,8 @@ int main(int argc, char *argv[]) {
 
     // Main loop: wait for quit event
     SDL_Event event;
+    int current = 0;
+    init_game(&games[current]);
     bool running = true;
     while (running) {
         while(SDL_PollEvent(&event)) {
@@ -36,11 +36,16 @@ int main(int argc, char *argv[]) {
                 case SDL_EVENT_KEY_DOWN: {
                     switch(event.key.key) {
                         case SDLK_SPACE: {
-                            step_game(&game);
+                            step_game(&games[current]);
                         } break;
 
                         case SDLK_R: {
-                            init_game(&game);
+                            init_game(&games[current]);
+                        } break;
+                        case SDLK_N: {
+                            int next = 1 - current;
+                            make_next_generation(&games[current], &games[next]);
+                            current = next;
                         } break;
                     }
                 } break;
@@ -49,7 +54,7 @@ int main(int argc, char *argv[]) {
                     Coord pos;
                     pos.x = (int) floorf(event.button.x / CELL_WIDTH);
                     pos.y = (int) floorf(event.button.y / CELL_HEIGHT);
-                    Agent *agent = agent_at(&game, pos);
+                    Agent *agent = agent_at(&games[current], pos);
 
                     if (agent) {
                         print_agent(stdout, agent);
@@ -62,7 +67,7 @@ int main(int argc, char *argv[]) {
         scc(SDL_RenderClear(renderer));
 
         // render_board_grid(renderer);
-        render_game(renderer, &game);
+        render_game(renderer, &games[current]);
         SDL_RenderPresent(renderer);
         SDL_Delay(16); // Simple sleep (~60FPS)
     }

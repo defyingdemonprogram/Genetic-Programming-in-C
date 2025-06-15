@@ -1,6 +1,6 @@
 #include "./gp_game.h"
 
-FILE *fp = 0;
+FILE *gnuplot_pipe = 0;
 
 #define nOfGnuplotCmds 14
 
@@ -36,7 +36,7 @@ void log_header(FILE *stream) {
     fprintf(stream, "#Loggind generations\n");
     fprintf(stream,
               "#Generation, Avg Lifetime, Min Lifetime, Max Lifetime, Food eaten\n");
-    fp = popen("gnuplot -p", "w");
+    gnuplot_pipe = popen("gnuplot -p", "w");
 }
 
 void log_generation(FILE *stream, int gen, Game *game) {
@@ -66,11 +66,11 @@ void log_generation(FILE *stream, int gen, Game *game) {
 
 void log_live_update(void) {
     for (size_t i = 0; i < nOfGnuplotCmds; ++i) {
-        fprintf(fp, "%s \n", gnuplotCmds[i]);
+        fprintf(gnuplot_pipe, "%s \n", gnuplotCmds[i]);
     }
-    fflush(fp);
+    fflush(gnuplot_pipe);
 }
 
 void log_close_pipe(void) {
-  pclose(fp);
+  pclose(gnuplot_pipe);
 }

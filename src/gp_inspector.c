@@ -30,7 +30,8 @@ int main(int argc, char *argv[]) {
         usage(stderr);
         fprintf(stderr, "ERROR: no input file is provided");
         exit(1);
-    }
+    }gnuplot stats_plot.p
+
     const char *input_filepath = shift(&argc, &argv);
 
     load_game(input_filepath, &game);

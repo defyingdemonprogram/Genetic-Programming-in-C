@@ -27,13 +27,25 @@ Genetic Programming (GP) is a type of evolutionary algorithm and a subset of mac
    LD_LIBRARY_PATH=~/opt/c/sdl/lib ./build/gp_simulator [input.bin]
    ```
 
-   For `gp_simulator`, `input.bin` is optional.
+* `gp_simulator`: The `input.bin` file is optional.
 
    ```bash
-   LD_LIBRARY_PATH=~/opt/c/sdl/lib ./build/gp_trainer <generations-count> <output.bin>
+   LD_LIBRARY_PATH=~/opt/c/sdl/lib ./build/gp_trainer -g <generations-count> -o <output.bin>
    ```
 
-   For `gp_trainer`, `<generations-count>` is number of maximum generation and `output.bin` is name of file after the `<generations-count>` iterations
+* `gp_trainer`:
+
+  * `<generations-count>` specifies the number of generations to run.
+  * `<output.bin>` is the output file generated after the given number of generations.
+
+- **`gp_trainer` Options:**
+
+   ```
+   -g <NUMBER>     Number of generations to run (default: 69)
+   -o <FILEPATH>   Output file path (default: output.bin)
+   -gp             Enable epic Gnuplot reporting (requires Gnuplot)
+   -h              Display this help message
+   ```
 
 4. **Clean Up**
    To remove the compiled executable and other build files:

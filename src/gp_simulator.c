@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_render.h>
 
 #include "./gp_game.c"
 #include "./gp_visual.c"
@@ -49,6 +50,8 @@ int main(int argc, char *argv[]) {
     SDL_Renderer *const renderer = scp(SDL_CreateRenderer(
         window, NULL
     ));
+
+    scc(SDL_SetRenderLogicalPresentation(renderer, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_LOGICAL_PRESENTATION_LETTERBOX));
 
     // Main loop: wait for quit event
     SDL_Event event;

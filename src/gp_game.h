@@ -1,11 +1,11 @@
 #ifndef GP_GAME_H_
 #define GP_GAME_H_
 
-#define BOARD_WIDTH 30
-#define BOARD_HEIGHT 30
+#define BOARD_WIDTH 100
+#define BOARD_HEIGHT 100
 
-#define AGENTS_COUNT 60
-#define FOODS_COUNT 60
+#define AGENTS_COUNT 2000
+#define FOODS_COUNT 1000
 #define WALLS_COUNT 60
 #define JEANS_COUNT 20
 #define FOOD_HUNGER_RECOVERY 10

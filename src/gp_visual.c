@@ -70,10 +70,10 @@ void render_game(SDL_Renderer *renderer, const Game *game) {
 
             if (game->walls[y][x]) {
                 SDL_FRect rect = {
-                    (int) floorf(x * CELL_WIDTH + AGENT_PADDING),
-                    (int) floorf(y * CELL_HEIGHT + AGENT_PADDING),
-                    (int) floorf(CELL_WIDTH) - 2*AGENT_PADDING,
-                    (int) floorf(CELL_HEIGHT) -2* AGENT_PADDING,
+                    (int) floorf(x * CELL_WIDTH),
+                    (int) floorf(y * CELL_HEIGHT),
+                    (int) floorf(CELL_WIDTH),
+                    (int) floorf(CELL_HEIGHT),
                 };
 
                 SDL_SetRenderDrawColor(renderer, HEX_COLOR(WALL_COLOR));

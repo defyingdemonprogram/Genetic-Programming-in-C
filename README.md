@@ -53,6 +53,9 @@ Genetic Programming (GP) is a type of evolutionary algorithm and a subset of mac
    ```bash
    make clean
    ```
+### Demo
+[gp_simulator](https://github.com/user-attachments/assets/3e6c6395-3e49-4054-9898-22cc2342ac3e)
+
 
 ## Controls
 
